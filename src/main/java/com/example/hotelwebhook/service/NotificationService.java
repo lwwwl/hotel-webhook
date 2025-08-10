@@ -1,14 +1,16 @@
 package com.example.hotelwebhook.service;
 
+import java.time.LocalDateTime;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import com.example.hotelwebhook.model.ChatwootEvent;
 import com.example.hotelwebhook.model.NotificationMessage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -45,6 +47,10 @@ public class NotificationService {
         return switch (event.getEventType()) {
             case "message_created" -> builder
                     .type("message_created")
+                    .data(event.getMetadata())
+                    .build();
+            case "message_updated" -> builder
+                    .type("message_updated")
                     .data(event.getMetadata())
                     .build();
             case "conversation_created" -> builder

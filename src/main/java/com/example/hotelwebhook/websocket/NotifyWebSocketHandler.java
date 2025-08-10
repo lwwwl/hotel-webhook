@@ -1,13 +1,16 @@
 package com.example.hotelwebhook.websocket;
 
-import com.example.hotelwebhook.service.WebSocketSessionManager;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+
+import com.example.hotelwebhook.service.WebSocketSessionManager;
+import com.example.hotelwebhook.util.JwtUtil;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
@@ -16,16 +19,33 @@ public class NotifyWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     private WebSocketSessionManager sessionManager;
     
+    @Autowired
+    private JwtUtil jwtUtil;
+    
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         String userId = getUserId(session);
-        String userType = getUserType(session);
+        String guestId = getGuestId(session);
         
-        if (userId != null && userType != null) {
-            sessionManager.registerSession(userId, userType, session);
-            log.info("用户 {} (类型: {}) 建立WebSocket连接", userId, userType);
+        // 根据参数判断用户类型
+        String actualUserId = null;
+        String userType = null;
+        
+        if (userId != null && !userId.isEmpty()) {
+            // 客服端连接
+            actualUserId = userId;
+            userType = "agent";
+        } else if (guestId != null && !guestId.isEmpty()) {
+            // 客人端连接
+            actualUserId = guestId;
+            userType = "guest";
+        }
+        
+        if (actualUserId != null && userType != null) {
+            sessionManager.registerSession(actualUserId, userType, session);
+            log.info("用户 {} (类型: {}) 建立WebSocket连接", actualUserId, userType);
         } else {
-            log.warn("WebSocket连接缺少必要参数: userId={}, userType={}", userId, userType);
+            log.warn("WebSocket连接缺少必要参数: userId={}, guestId={}", userId, guestId);
             session.close();
         }
     }
@@ -61,7 +81,7 @@ public class NotifyWebSocketHandler extends TextWebSocketHandler {
     }
     
     /**
-     * 从URL参数中获取用户ID
+     * 从URL参数中获取用户ID（客服端）
      */
     private String getUserId(WebSocketSession session) {
         String query = session.getUri() != null ? session.getUri().getQuery() : null;
@@ -77,18 +97,18 @@ public class NotifyWebSocketHandler extends TextWebSocketHandler {
     }
     
     /**
-     * 从URL参数中获取用户类型
+     * 从URL参数中获取客人ID（客人端）
      */
-    private String getUserType(WebSocketSession session) {
+    private String getGuestId(WebSocketSession session) {
         String query = session.getUri() != null ? session.getUri().getQuery() : null;
         if (query != null) {
             for (String param : query.split("&")) {
                 String[] kv = param.split("=");
-                if (kv.length == 2 && "userType".equals(kv[0])) {
+                if (kv.length == 2 && "guestId".equals(kv[0])) {
                     return kv[1];
                 }
             }
         }
-        return "guest"; // 默认为客人
+        return null;
     }
 } 
