@@ -1,60 +1,69 @@
 package com.example.hotelwebhook.websocket;
 
-import org.springframework.web.socket.*;
+import com.example.hotelwebhook.service.WebSocketSessionManager;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.Map;
 
+@Slf4j
+@Component
 public class NotifyWebSocketHandler extends TextWebSocketHandler {
-    // 用户ID到WebSocketSession的映射
-    private static final Map<String, WebSocketSession> userSessionMap = new ConcurrentHashMap<>();
-
-    public static WebSocketSession getSession(String userId) {
-        return userSessionMap.get(userId);
-    }
-
-    public static void sendNotify(String userId) {
-        WebSocketSession session = userSessionMap.get(userId);
-        if (session != null && session.isOpen()) {
-            try {
-                session.sendMessage(new TextMessage("notify"));
-            } catch (Exception e) {
-                // 日志省略
-            }
-        }
-    }
-
-    public static Map<String, WebSocketSession> getUserSessionMap() {
-        return userSessionMap;
-    }
-
+    
+    @Autowired
+    private WebSocketSessionManager sessionManager;
+    
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        // 假设前端连接时带userId参数
         String userId = getUserId(session);
-        if (userId != null) {
-            userSessionMap.put(userId, session);
+        String userType = getUserType(session);
+        
+        if (userId != null && userType != null) {
+            sessionManager.registerSession(userId, userType, session);
+            log.info("用户 {} (类型: {}) 建立WebSocket连接", userId, userType);
+        } else {
+            log.warn("WebSocket连接缺少必要参数: userId={}, userType={}", userId, userType);
+            session.close();
         }
     }
-
+    
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        String userId = getUserId(session);
-        if (userId != null) {
-            userSessionMap.remove(userId);
-        }
+        sessionManager.removeSession(session.getId());
+        log.info("WebSocket连接关闭: {}", session.getId());
     }
-
+    
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        // 心跳包或其他消息
-        if ("ping".equalsIgnoreCase(message.getPayload())) {
+        String payload = message.getPayload();
+        
+        // 处理心跳消息
+        if ("ping".equalsIgnoreCase(payload)) {
+            sessionManager.updateHeartbeat(session.getId());
             session.sendMessage(new TextMessage("pong"));
+            return;
         }
+        
+        // 处理其他消息类型
+        log.debug("收到WebSocket消息: {}", payload);
+        
+        // 这里可以添加其他消息处理逻辑
+        // 比如：用户状态更新、输入状态等
     }
-
+    
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
+        log.error("WebSocket传输错误: {}", exception.getMessage(), exception);
+        sessionManager.removeSession(session.getId());
+    }
+    
+    /**
+     * 从URL参数中获取用户ID
+     */
     private String getUserId(WebSocketSession session) {
-        // 从URL参数获取userId
         String query = session.getUri() != null ? session.getUri().getQuery() : null;
         if (query != null) {
             for (String param : query.split("&")) {
@@ -65,5 +74,21 @@ public class NotifyWebSocketHandler extends TextWebSocketHandler {
             }
         }
         return null;
+    }
+    
+    /**
+     * 从URL参数中获取用户类型
+     */
+    private String getUserType(WebSocketSession session) {
+        String query = session.getUri() != null ? session.getUri().getQuery() : null;
+        if (query != null) {
+            for (String param : query.split("&")) {
+                String[] kv = param.split("=");
+                if (kv.length == 2 && "userType".equals(kv[0])) {
+                    return kv[1];
+                }
+            }
+        }
+        return "guest"; // 默认为客人
     }
 } 
