@@ -2,6 +2,7 @@ package com.example.hotelwebhook.service;
 
 import java.time.LocalDateTime;
 
+import com.example.hotelwebhook.utils.JsonUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +29,7 @@ public class NotificationService {
     public void processEvent(ChatwootEvent event) {
         try {
             NotificationMessage notification = createNotificationMessage(event);
+            log.info("执行到 processEvent event: {}", JsonUtil.toJson(notification));
             if (notification != null) {
                 sendNotification(event, notification);
             }
@@ -41,7 +43,7 @@ public class NotificationService {
      */
     private NotificationMessage createNotificationMessage(ChatwootEvent event) {
         NotificationMessage.NotificationMessageBuilder builder = NotificationMessage.builder()
-                .timestamp(LocalDateTime.now())
+                .timestamp(System.currentTimeMillis())
                 .conversationId(event.getConversationId());
 
         return switch (event.getEventType()) {
@@ -77,7 +79,7 @@ public class NotificationService {
     private void sendNotification(ChatwootEvent event, NotificationMessage notification) {
         try {
             String notificationJson = objectMapper.writeValueAsString(notification);
-            
+            log.info("执行到 sendNotification notification: {}", notificationJson);
             // 根据事件类型决定通知策略
             switch (event.getEventType()) {
                 case "message_created":

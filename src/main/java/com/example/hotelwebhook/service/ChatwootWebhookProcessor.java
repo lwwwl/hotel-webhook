@@ -1,15 +1,11 @@
 package com.example.hotelwebhook.service;
 
 import com.example.hotelwebhook.model.ChatwootEvent;
-import com.example.hotelwebhook.model.NotificationMessage;
 import com.example.hotelwebhook.utils.JsonUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.List;
 
@@ -29,6 +25,7 @@ public class ChatwootWebhookProcessor {
             log.info("处理Chatwoot webhook事件: {}", eventType);
             
             ChatwootEvent event = parseEvent(payload, eventType);
+            log.info("ChatwootEvent 生成结果：{}", JsonUtil.toJson(event));
             if (event != null) {
                 notificationService.processEvent(event);
             }
@@ -58,20 +55,17 @@ public class ChatwootWebhookProcessor {
             ChatwootEvent.ChatwootEventBuilder builder = ChatwootEvent.builder()
                     .eventType(eventType)
                     .timestamp(System.currentTimeMillis());
-            
-            switch (eventType) {
-                case "message_created":
-                    return parseMessageCreatedEvent(payload, builder);
-                case "conversation_created":
-                    return parseConversationCreatedEvent(payload, builder);
-                case "conversation_updated":
-                    return parseConversationUpdatedEvent(payload, builder);
-                case "conversation_resolved":
-                    return parseConversationResolvedEvent(payload, builder);
-                default:
+
+            return switch (eventType) {
+                case "message_created" -> parseMessageCreatedEvent(payload, builder);
+                case "conversation_created" -> parseConversationCreatedEvent(payload, builder);
+                case "conversation_updated" -> parseConversationUpdatedEvent(payload, builder);
+                case "conversation_resolved" -> parseConversationResolvedEvent(payload, builder);
+                default -> {
                     log.warn("未知的事件类型: {}", eventType);
-                    return null;
-            }
+                    yield null;
+                }
+            };
         } catch (Exception e) {
             log.error("解析事件数据失败: {}", e.getMessage(), e);
             return null;
@@ -98,7 +92,7 @@ public class ChatwootWebhookProcessor {
         }
 
         // 提取消息类型
-        String messageType = extractString(conversation, "message_type");
+        String messageType = extractString(payload, "message_type");
         
         // 提取接收者信息
         String recipientId = null;

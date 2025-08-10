@@ -17,6 +17,6 @@ public class NotificationMessage {
     private String messageId;
     private String senderId;
     private String content;
-    private LocalDateTime timestamp;
+    private Long timestamp;
     private Object data; // 额外的数据
 }

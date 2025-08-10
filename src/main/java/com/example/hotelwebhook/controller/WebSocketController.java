@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.hotelwebhook.model.response.WebSocketConnectionResponse;
 import com.example.hotelwebhook.service.WebSocketSessionManager;
-import com.example.hotelwebhook.util.JwtUtil;
+import com.example.hotelwebhook.utils.ConnectionUtil;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,9 +30,9 @@ public class WebSocketController {
     private WebSocketSessionManager sessionManager;
     
     @Autowired
-    private JwtUtil jwtUtil;
+    private ConnectionUtil connectionUtil;
     
-    @Value("${websocket.server.url:ws://localhost:7766}")
+    @Value("${websocket.server.url}")
     private String websocketServerUrl;
     
     /**
@@ -44,7 +44,7 @@ public class WebSocketController {
         
         try {
             // 生成连接标识
-            String connectionId = jwtUtil.generateConnectionId(userId, "agent");
+            String connectionId = connectionUtil.generateConnectionId(userId, "agent");
             
             // 构建WebSocket连接URL
             String wsUrl = buildWebSocketUrl("userId", userId, connectionId);
@@ -81,7 +81,7 @@ public class WebSocketController {
         
         try {
             // 生成连接标识
-            String connectionId = jwtUtil.generateConnectionId(guestId, "guest");
+            String connectionId = connectionUtil.generateConnectionId(guestId, "guest");
             
             // 构建WebSocket连接URL
             String wsUrl = buildWebSocketUrl("guestId", guestId, connectionId);

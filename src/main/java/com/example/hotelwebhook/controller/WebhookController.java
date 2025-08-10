@@ -1,6 +1,7 @@
 package com.example.hotelwebhook.controller;
 
 import com.example.hotelwebhook.service.ChatwootWebhookProcessor;
+import com.example.hotelwebhook.utils.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,7 @@ import java.util.Map;
 
 @Slf4j
 @RestController
+@CrossOrigin
 @RequestMapping("/chatwoot-webhook")
 public class WebhookController {
     
@@ -19,7 +21,7 @@ public class WebhookController {
     @PostMapping("/callback")
     public ResponseEntity<String> handleChatwootWebhook(@RequestBody Map<String, Object> payload) {
         try {
-            log.info("收到Chatwoot webhook回调: {}", payload);
+            log.info("收到Chatwoot webhook回调: {}", JsonUtil.toJson(payload));
             webhookProcessor.processWebhookEvent(payload);
             return ResponseEntity.ok("success");
         } catch (Exception e) {
