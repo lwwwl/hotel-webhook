@@ -47,7 +47,7 @@ public class WebSocketController {
             String connectionId = connectionUtil.generateConnectionId(userId, "agent");
             
             // 构建WebSocket连接URL
-            String wsUrl = buildWebSocketUrl("userId", userId, connectionId);
+            String wsUrl = String.format("wss://kefu.5ok.co/ws/notify?userId=%s&connectionId=%s", userId, connectionId);
             
             WebSocketConnectionResponse response = WebSocketConnectionResponse.builder()
                     .success(true)
@@ -84,8 +84,8 @@ public class WebSocketController {
             String connectionId = connectionUtil.generateConnectionId(guestId, "guest");
             
             // 构建WebSocket连接URL
-            String wsUrl = buildWebSocketUrl("guestId", guestId, connectionId);
-            
+            String wsUrl = String.format("wss://kefu.5ok.co/ws/notify?guestId=%s&connectionId=%s", guestId, connectionId);
+
             WebSocketConnectionResponse response = WebSocketConnectionResponse.builder()
                     .success(true)
                     .message("客人端WebSocket连接信息获取成功")
