@@ -108,8 +108,14 @@ public class NotificationService {
     private void sendMessageNotification(ChatwootEvent event, String notificationJson) {
         // 检查是否有接收者信息
         if (event.getRecipientId() == null || event.getRecipientType() == null) {
-            log.warn("消息事件缺少接收者信息，无法发送定向通知: conversationId={}, messageType={}", 
+            if ("agent".equals(event.getRecipientType())) {
+                log.info("客人会话未绑定具体客服，向所有客服发送消息: conversationId={}, messageType={}",
+                        event.getConversationId(), event.getMessageType());
+                sessionManager.sendNotificationToAllAgent(notificationJson);
+            } else {
+                log.warn("消息事件缺少接收者信息，无法发送定向通知: conversationId={}, messageType={}",
                     event.getConversationId(), event.getMessageType());
+            }
             return;
         }
         
@@ -117,13 +123,9 @@ public class NotificationService {
         if ("guest".equals(event.getRecipientType())) {
             // 向客人发送通知
             sessionManager.sendNotificationToGuest(event.getRecipientId(), notificationJson);
-            log.info("向客人 {} 发送消息通知: conversationId={}", 
-                    event.getRecipientId(), event.getConversationId());
         } else if ("agent".equals(event.getRecipientType())) {
             // 向客服发送通知
             sessionManager.sendNotificationToAgent(event.getRecipientId(), notificationJson);
-            log.info("向客服 {} 发送消息通知: conversationId={}", 
-                    event.getRecipientId(), event.getConversationId());
         } else {
             log.warn("未知的接收者类型: {}, 无法发送通知", event.getRecipientType());
         }

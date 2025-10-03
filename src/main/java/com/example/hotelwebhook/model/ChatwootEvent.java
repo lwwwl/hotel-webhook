@@ -20,6 +20,6 @@ public class ChatwootEvent {
 
     // 新增字段用于消息定向推送
     private String messageType; // "incoming" 或 "outgoing"
-    private String recipientId; // 接收者ID (guestId 或 userId)
+    private String recipientId; // 接收者ID (contactId 或 userId)
     private String recipientType; // "guest" 或 "agent"
 }

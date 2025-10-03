@@ -77,25 +77,25 @@ public class WebSocketController {
      */
     @PostMapping("/connect/guest")
     public ResponseEntity<WebSocketConnectionResponse> getGuestWebSocketConnection(
-            @RequestParam String guestId) {
+            @RequestParam String contactId) {
         
         try {
             // 生成连接标识
-            String connectionId = connectionUtil.generateConnectionId(guestId, "guest");
+            String connectionId = connectionUtil.generateConnectionId(contactId, "guest");
             
             // 构建WebSocket连接URL
-            String wsUrl = String.format("wss://kefu.5ok.co/ws/notify?guestId=%s&connectionId=%s", guestId, connectionId);
+            String wsUrl = String.format("wss://kefu.5ok.co/ws/notify?contactId=%s&connectionId=%s", contactId, connectionId);
 
             WebSocketConnectionResponse response = WebSocketConnectionResponse.builder()
                     .success(true)
                     .message("客人端WebSocket连接信息获取成功")
                     .wsUrl(wsUrl)
                     .wsToken(connectionId)
-                    .userId(guestId)
+                    .userId(contactId)
                     .userType("guest")
                     .build();
             
-            log.info("客人 {} 获取WebSocket连接信息", guestId);
+            log.info("客人 {} 获取WebSocket连接信息", contactId);
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {

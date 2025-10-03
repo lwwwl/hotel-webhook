@@ -27,7 +27,7 @@ public class NotifyWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         String userId = getUserId(session);
-        String guestId = getGuestId(session);
+        String contactId = getContactId(session);
         String connectionId = getConnectionId(session);
         
         // 根据参数判断用户类型
@@ -38,9 +38,9 @@ public class NotifyWebSocketHandler extends TextWebSocketHandler {
             // 客服端连接
             actualUserId = userId;
             userType = "agent";
-        } else if (guestId != null && !guestId.isEmpty()) {
+        } else if (contactId != null && !contactId.isEmpty()) {
             // 客人端连接
-            actualUserId = guestId;
+            actualUserId = contactId;
             userType = "guest";
         }
         
@@ -149,12 +149,12 @@ public class NotifyWebSocketHandler extends TextWebSocketHandler {
     /**
      * 从URL参数中获取客人ID（客人端）
      */
-    private String getGuestId(WebSocketSession session) {
+    private String getContactId(WebSocketSession session) {
         String query = session.getUri() != null ? session.getUri().getQuery() : null;
         if (query != null) {
             for (String param : query.split("&")) {
                 String[] kv = param.split("=");
-                if (kv.length == 2 && "guestId".equals(kv[0])) {
+                if (kv.length == 2 && "contactId".equals(kv[0])) {
                     return kv[1];
                 }
             }

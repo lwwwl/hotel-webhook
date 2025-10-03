@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public class WebSocketSessionManager {
     
     // 客人ID到会话的映射 (支持多端登录)
-    private final Map<String, Map<String, UserSession>> guestSessions = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, UserSession>> contactSessions = new ConcurrentHashMap<>();
     
     // 客服ID到会话的映射 (支持多端登录)
     private final Map<String, Map<String, UserSession>> agentSessions = new ConcurrentHashMap<>();
@@ -44,7 +44,7 @@ public class WebSocketSessionManager {
         
         // 根据用户类型添加到对应的映射
         if ("guest".equals(userType)) {
-            guestSessions.computeIfAbsent(userId, k -> new ConcurrentHashMap<>()).put(sessionId, userSession);
+            contactSessions.computeIfAbsent(userId, k -> new ConcurrentHashMap<>()).put(sessionId, userSession);
         } else if ("agent".equals(userType)) {
             agentSessions.computeIfAbsent(userId, k -> new ConcurrentHashMap<>()).put(sessionId, userSession);
         }
@@ -66,11 +66,11 @@ public class WebSocketSessionManager {
             
             // 从对应的映射中移除
             if ("guest".equals(userType)) {
-                Map<String, UserSession> userSessionMap = guestSessions.get(userId);
+                Map<String, UserSession> userSessionMap = contactSessions.get(userId);
                 if (userSessionMap != null) {
                     userSessionMap.remove(sessionId);
                     if (userSessionMap.isEmpty()) {
-                        guestSessions.remove(userId);
+                        contactSessions.remove(userId);
                     }
                 }
             } else if ("agent".equals(userType)) {
@@ -90,23 +90,25 @@ public class WebSocketSessionManager {
     /**
      * 向客人发送通知
      */
-    public void sendNotificationToGuest(String guestId, String message) {
-        Map<String, UserSession> userSessionMap = guestSessions.get(guestId);
+    public void sendNotificationToGuest(String contactId, String message) {
+        Map<String, UserSession> userSessionMap = contactSessions.get(contactId);
         if (userSessionMap != null) {
             userSessionMap.values().forEach(session -> {
                 try {
                     if (session.getWebSocketSession().isOpen()) {
                         session.getWebSocketSession().sendMessage(new TextMessage(message));
-                        log.debug("向客人 {} 发送通知: {}", guestId, message);
+                        log.info("向客人 {} 发送通知: {}", contactId, message);
                     } else {
                         // 清理无效连接
                         removeSession(session.getSessionId());
                     }
                 } catch (IOException e) {
-                    log.error("向客人 {} 发送通知失败: {}", guestId, e.getMessage());
+                    log.error("向客人 {} 发送通知失败: {}", contactId, e.getMessage());
                     removeSession(session.getSessionId());
                 }
             });
+        } else {
+            log.warn("向客人 {} 发送通知失败，chatwoot contactId未建立链接", contactId);
         }
     }
     
@@ -120,7 +122,7 @@ public class WebSocketSessionManager {
                 try {
                     if (session.getWebSocketSession().isOpen()) {
                         session.getWebSocketSession().sendMessage(new TextMessage(message));
-                        log.debug("向客服 {} 发送通知: {}", agentId, message);
+                        log.info("向客服 {} 发送通知: {}", agentId, message);
                     } else {
                         // 清理无效连接
                         removeSession(session.getSessionId());
@@ -130,9 +132,20 @@ public class WebSocketSessionManager {
                     removeSession(session.getSessionId());
                 }
             });
+        } else {
+            log.warn("向客服 {} 发送通知失败，chatwoot agentId未建立链接", agentId);
         }
     }
-    
+
+    /**
+     * 向所有客服发送通知
+     */
+    public void sendNotificationToAllAgent(String message) {
+        agentSessions.forEach((agentId, sessions) -> {
+            sendNotificationToAgent(agentId, message);
+        });
+    }
+
     /**
      * 向用户发送通知（兼容旧接口）
      */
@@ -149,9 +162,9 @@ public class WebSocketSessionManager {
         // 这里需要根据conversationId获取相关用户列表
         // 暂时实现为向所有在线用户发送（除了发送者）
         // 遍历客人
-        guestSessions.forEach((guestId, sessions) -> {
-            if (!guestId.equals(senderId)) {
-                sendNotificationToGuest(guestId, message);
+        contactSessions.forEach((contactId, sessions) -> {
+            if (!contactId.equals(senderId)) {
+                sendNotificationToGuest(contactId, message);
             }
         });
         
@@ -176,8 +189,8 @@ public class WebSocketSessionManager {
     /**
      * 获取客人的所有会话
      */
-    public Map<String, UserSession> getGuestSessions(String guestId) {
-        return guestSessions.getOrDefault(guestId, new ConcurrentHashMap<>());
+    public Map<String, UserSession> getGuestSessions(String contactId) {
+        return contactSessions.getOrDefault(contactId, new ConcurrentHashMap<>());
     }
     
     /**
@@ -204,8 +217,8 @@ public class WebSocketSessionManager {
     /**
      * 检查客人是否在线
      */
-    public boolean isGuestOnline(String guestId) {
-        Map<String, UserSession> userSessionMap = guestSessions.get(guestId);
+    public boolean isGuestOnline(String contactId) {
+        Map<String, UserSession> userSessionMap = contactSessions.get(contactId);
         if (userSessionMap != null) {
             return userSessionMap.values().stream()
                     .anyMatch(session -> session.getWebSocketSession().isOpen());
@@ -236,7 +249,7 @@ public class WebSocketSessionManager {
      * 获取在线客人数量
      */
     public int getOnlineGuestCount() {
-        return (int) guestSessions.values().stream()
+        return (int) contactSessions.values().stream()
                 .flatMap(sessions -> sessions.values().stream())
                 .filter(session -> session.getWebSocketSession().isOpen())
                 .count();
